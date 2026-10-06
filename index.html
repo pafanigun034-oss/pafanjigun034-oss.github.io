@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>حاسبة أرباح الدروبشيبينغ</title>
+<style>
+:root{
+  --bg:#0f1115; --card:#171a21; --border:#262b36; --text:#e8eaf0;
+  --muted:#9aa3b2; --faint:#5c6575;
+  --green:#2ecc71; --red:#e74c3c; --blue:#4f8ef7; --bar:#8b93a3;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Arial,sans-serif}
+body{background:var(--bg);color:var(--text);min-height:100vh;padding:24px 16px}
+.wrap{max-width:760px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+h1{font-size:22px;font-weight:600}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+select{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;cursor:pointer}
+h2{font-size:15px;font-weight:600;color:var(--muted);margin:20px 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.fld{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;transition:border-color .15s}
+.fld:focus-within{border-color:var(--blue)}
+.fld label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.fld input{width:100%;border:none;background:transparent;color:var(--text);font-size:16px;outline:none;font-variant-numeric:tabular-nums}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:4px;line-height:1.2}
+.pos{color:var(--green)} .neg{color:var(--red)}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.panels{grid-template-columns:1fr}}
+.panel h3{font-size:14px;font-weight:600;margin-bottom:10px}
+.bar{height:10px;border-radius:6px;background:#20242e;overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:6px;vertical-align:middle}
+.ln{display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px dashed var(--border);color:var(--muted)}
+.ln b{color:var(--text);font-variant-numeric:tabular-nums}
+.ln:last-child{border-bottom:none}
+.ln.total{font-size:15px;color:var(--text)}
+.actions{display:flex;gap:10px;align-items:center;margin-top:20px;flex-wrap:wrap}
+.btn{cursor:pointer;border:none;border-radius:10px;padding:11px 22px;font-size:15px;font-weight:600;background:var(--blue);color:#fff;transition:filter .15s}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+#msg{font-size:13px;color:var(--green)}
+.pub-wrap{position:relative;display:inline-block}
+.pub-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:170px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:6px;display:none;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.pub-menu.open{display:block}
+.pub-menu button{display:block;width:100%;text-align:right;background:transparent;border:none;color:var(--text);padding:9px 12px;border-radius:7px;font-size:14px;cursor:pointer}
+.pub-menu button:hover{background:#20242e}
+footer{margin-top:24px;text-align:center;color:var(--faint);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>حاسبة أرباح الدروبشيبينغ</h1>
+      <div class="sub">احسب ربحك وهامشك ونقطة التعادل فورياً — يعمل بدون خادم</div>
+    </div>
+    <select id="cur" onchange="calc()">
+      <option value="$" selected>دولار $</option>
+      <option value="€">يورو €</option>
+      <option value="£">جنيه £</option>
+      <option value="ر.س">ريال سعودي</option>
+      <option value="د.إ">درهم إماراتي</option>
+      <option value="د.ج">دينار جزائري</option>
+      <option value="ج.م">جنيه مصري</option>
+      <option value="د.م">درهم مغربي</option>
+    </select>
+  </header>
+
+  <h2>مدخلاتك</h2>
+  <div class="grid" id="inputs"></div>
+
+  <h2>النتائج</h2>
+  <div class="kpis">
+    <div class="kpi"><div class="l">الربح الصافي لكل طلب</div><div class="v" id="vPpo">—</div></div>
+    <div class="kpi"><div class="l">هامش الربح</div><div class="v" id="vMargin">—</div></div>
+    <div class="kpi"><div class="l">العائد على الإعلان (ROAS)</div><div class="v" id="vRoas">—</div></div>
+    <div class="kpi"><div class="l">الإجمالي (<span id="vN">0</span> طلب)</div><div class="v" id="vTotal">—</div></div>
+  </div>
+
+  <div class="panels" style="margin-top:10px">
+    <div class="panel">
+      <h3>توزيع سعر البيع</h3>
+      <div class="bar">
+        <i id="bCost"></i><i id="bShip"></i><i id="bAds"></i><i id="bFee"></i><i id="bTax"></i><i id="bProfit" style="background:var(--blue)"></i>
+      </div>
+      <div id="legend" style="margin-top:10px"></div>
+    </div>
+    <div class="panel">
+      <h3>ملخص الطلب الواحد</h3>
+      <div class="ln"><span>سعر البيع</span><b id="rRev"></b></div>
+      <div class="ln"><span>تكلفة المنتج + الشحن</span><b id="rCs"></b></div>
+      <div class="ln"><span>الإعلانات</span><b id="rAd"></b></div>
+      <div class="ln"><span>الرسوم والضرائب</span><b id="rFee"></b></div>
+      <div class="ln total"><span>صافي الربح</span><b id="rNet"></b></div>
+      <div class="ln"><span>نقطة التعادل (أقصى CPA)</span><b id="rBe"></b></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <div class="pub-wrap">
+      <button class="btn" id="pubBtn">نشر ▾</button>
+      <div class="pub-menu" id="pubMenu">
+        <button id="linkBtn">🔗 نسخ الرابط</button>
+        <button id="copyBtn">📋 نسخ الملخص</button>
+        <button onclick="window.print()">🖨️ طباعة / PDF</button>
+      </div>
+    </div>
+    <span id="msg"></span>
+  </div>
+
+  <footer>حاسبة أرباح الدروبشيبينغ — ملف مستقل يعمل محلياً بالكامل</footer>
+</div>
+
+<script>
+var F=[
+ {id:'price',l:'سعر البيع للمنتج',v:39.99,step:0.5},
+ {id:'cost',l:'تكلفة المنتج من المورّد',v:8.5,step:0.5},
+ {id:'ship',l:'تكلفة الشحن',v:4.2,step:0.1},
+ {id:'ads',l:'تكلفة الإعلان لكل طلب (CPA)',v:11,step:0.5},
+ {id:'fee',l:'رسوم المنصة والدفع %',v:6,step:0.5},
+ {id:'tax',l:'ضريبة %',v:0,step:0.5},
+ {id:'qty',l:'عدد الطلبات',v:100,step:1}
+];
+var host=document.getElementById('inputs');
+F.forEach(function(f){
+  var d=document.createElement('div');d.className='fld';
+  d.innerHTML='<label>'+f.l+'</label><input type="number" id="f_'+f.id+'" value="'+f.v+'" step="'+f.step+'" min="0" oninput="calc()">';
+  host.appendChild(d);
+});
+function n(id){return parseFloat(document.getElementById('f_'+id).value)||0}
+function fm(x){var c=document.getElementById('cur').value;
+  return (x<0?'-':'')+c+' '+Math.abs(x).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function calc(){
+  var p=n('price'),c=n('cost'),s=n('ship'),a=n('ads'),q=n('qty');
+  var fee=(p+a)*(n('fee')/100), tax=p*(n('tax')/100);
+  var net=p-c-s-a-fee-tax, total=net*q;
+  var margin=p>0?net/p*100:0;
+  var roas=a>0?p/a:0, be=p-c-s-fee-tax;
+  var ppo=document.getElementById('vPpo');
+  ppo.textContent=fm(net); ppo.className='v '+(net>=0?'pos':'neg');
+  var mg=document.getElementById('vMargin');
+  mg.textContent=margin.toFixed(1)+'%'; mg.className='v '+(margin>=0?'pos':'neg');
+  document.getElementById('vRoas').textContent=roas.toFixed(2)+'×';
+  document.getElementById('vN').textContent=q.toLocaleString('en-US');
+  var tt=document.getElementById('vTotal');
+  tt.textContent=fm(total); tt.className='v '+(total>=0?'pos':'neg');
+  document.getElementById('rRev').textContent=fm(p);
+  document.getElementById('rCs').textContent='-'+fm(c+s);
+  document.getElementById('rAd').textContent='-'+fm(a);
+  document.getElementById('rFee').textContent='-'+fm(fee+tax);
+  var rn=document.getElementById('rNet');
+  rn.textContent=(net>=0?'+':'')+fm(net); rn.className=net>=0?'pos':'neg';
+  document.getElementById('rBe').textContent=fm(Math.max(0,be));
+  var seg=[
+    ['bCost',c,'تكلفة المنتج','#8b93a3'],
+    ['bShip',s,'الشحن','#6e7684'],
+    ['bAds',a,'الإعلانات','#565d69'],
+    ['bFee',fee,'الرسوم','#3f4550'],
+    ['bTax',tax,'الضريبة','#2e333c'],
+    ['bProfit',Math.max(0,net),'صافي الربح','#4f8ef7']
+  ];
+  var lg=document.getElementById('legend');lg.innerHTML='';
+  seg.forEach(function(g){
+    var el=document.getElementById(g[0]);
+    el.style.width=(p>0?Math.max(0,g[1])/p*100:0)+'%';
+    el.style.background=g[3];
+    if(g[1]>0.004){
+      var r=document.createElement('div');r.className='ln';
+      r.innerHTML='<span><span class="dot" style="background:'+g[3]+'"></span>'+g[2]+'</span><span>'+fm(g[1])+'</span>';
+      lg.appendChild(r);
+    }
+  });
+}
+function summary(){
+  var p=n('price'),c=n('cost'),s=n('ship'),a=n('ads'),q=n('qty');
+  var fee=(p+a)*(n('fee')/100), tax=p*(n('tax')/100);
+  var net=p-c-s-a-fee-tax;
+  return 'حاسبة أرباح الدروبشيبينغ:\nسعر البيع: '+fm(p)+' | التكلفة: '+fm(c+s)+' | الإعلانات: '+fm(a)+'\n'
+    +'الربح لكل طلب: '+fm(net)+' ('+(p>0?(net/p*100).toFixed(1):0)+'%)\n'
+    +'الإجمالي لـ '+q+' طلب: '+fm(net*q)+' | نقطة التعادل CPA: '+fm(Math.max(0,p-c-s-fee-tax));
+}
+document.getElementById('copyBtn').onclick=function(){
+  var t=summary();
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){flash('تم نسخ الملخص ✓')},function(){fallback(t)});
+  }else fallback(t);
+};
+function fallback(t){
+  var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);
+  ta.select();try{document.execCommand('copy');flash('تم نسخ الملخص ✓')}catch(e){flash('تعذّر النسخ')}
+  document.body.removeChild(ta);
+}
+function flash(m){var e=document.getElementById('msg');e.textContent=m;setTimeout(function(){e.textContent=''},3000)}
+var pubBtn=document.getElementById('pubBtn'),pubMenu=document.getElementById('pubMenu');
+pubBtn.onclick=function(e){e.stopPropagation();pubMenu.classList.toggle('open')};
+document.addEventListener('click',function(){pubMenu.classList.remove('open')});
+document.getElementById('linkBtn').onclick=function(e){
+  e.stopPropagation();pubMenu.classList.remove('open');
+  var ps=F.map(function(f){return f.id+'='+n(f.id)}).join('&');
+  var link=location.href.split('?')[0]+'?'+ps;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(function(){flash('تم نسخ الرابط ✓')},function(){fallbackLink(link)});
+  }else fallbackLink(link);
+};
+function fallbackLink(link){var ta=document.createElement('textarea');ta.value=link;document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');flash('تم نسخ الرابط ✓')}catch(e){flash('تعذّر النسخ')}document.body.removeChild(ta)}
+var qs=new URLSearchParams(location.search);
+F.forEach(function(f){var v=qs.get(f.id);if(v!==null&&!isNaN(parseFloat(v)))document.getElementById('f_'+f.id).value=parseFloat(v)});
+if(qs.get('cur'))document.getElementById('cur').value=qs.get('cur');
+calc();
+</script>
+</body>
+</html>
